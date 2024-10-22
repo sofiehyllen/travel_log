@@ -7,11 +7,11 @@ from icecream import ic
 ic.configureOutput(prefix=f'***** | ', includeContext=True)
 
 
-post_users = Blueprint("post_users", __name__)
+post_create_user = Blueprint("post_create_user", __name__)
 
 
 ##############################
-@post_users.post("/users")
+@post_create_user.post("/users")
 def create_user():
     try:
         user_name = x.validate_user_name()
@@ -32,11 +32,12 @@ def create_user():
     
     except Exception as ex:
 
+        ic(ex)
         if "db" in locals(): db.rollback()
 
         # My own exception
         if isinstance(ex, x.CustomException):
-            return ex.message, ex.code
+            return f"""<template mix-target="#toast" mix-bottom>{ex.message}</template>""", ex.code
         
         # Database exception
         if isinstance(ex, x.mysql.connector.Error):

@@ -1,5 +1,8 @@
 
 
+<script src="{{url_for('static', filename='app.js')}}"></script>
+<script src="{{url_for('static', filename='mixhtml.js')}}"></script>
+
 <script>
     mojo()
 </script>
@@ -8,7 +11,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
     // Initialize the map
-    var map = L.map('map').setView([55.6845, 12.564148], 17);
+    var map = L.map('map').setView([55.6845, 12.564148], 12);
 
     // Add OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

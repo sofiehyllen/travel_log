@@ -9,9 +9,10 @@ from routes_get.get_index import get_index
 from routes_get.get_users import get_users
 from routes_get.get_profile import get_profile
 from routes_get.get_logout import get_logout
+from routes_get.get_items_by_page import get_items_by_page
 
 ##############################
-from routes_post.post_users import post_users
+from routes_post.post_create_user import post_create_user
 from routes_post.post_login import post_login
 
 ##############################
@@ -22,9 +23,10 @@ app.register_blueprint(get_index)
 app.register_blueprint(get_users)
 app.register_blueprint(get_profile)
 app.register_blueprint(get_logout)
+app.register_blueprint(get_items_by_page)
 
 
-app.register_blueprint(post_users)
+app.register_blueprint(post_create_user)
 app.register_blueprint(post_login)
 
 
