@@ -4,9 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import x
 import uuid 
 import time
-import redis
+# import redis
 import os
-import json
+# import json
 
 from icecream import ic
 ic.configureOutput(prefix=f'***** | ', includeContext=True)
@@ -30,26 +30,26 @@ def _________GET_________(): pass
 ##############################
 
 ##############################
-@app.get("/test-set-redis")
-def view_test_set_redis():
-    redis_host = "redis"
-    redis_port = 6379
-    redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)    
-    # redis_client.set("name", "Sofie", ex=10)
-    # name = redis_client.get("name")
+# @app.get("/test-set-redis")
+# def view_test_set_redis():
+#     redis_host = "redis"
+#     redis_port = 6379
+#     redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)    
+#     # redis_client.set("name", "Sofie", ex=10)
+#     # name = redis_client.get("name")
 
-    redis_client.set("11-22", json.dumps({"name":"A", "last_name":"B"}))
+#     redis_client.set("11-22", json.dumps({"name":"A", "last_name":"B"}))
 
-    return "name saved"
+#     return "name saved"
 
-@app.get("/test-get-redis")
-def view_test_get_redis():
-    redis_host = "redis"
-    redis_port = 6379
-    redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)   
+# @app.get("/test-get-redis")
+# def view_test_get_redis():
+#     redis_host = "redis"
+#     redis_port = 6379
+#     redis_client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)   
 
-    user = json.loads(redis_client.get("11-22"))
-    return user
+#     user = json.loads(redis_client.get("11-22"))
+#     return user
     # name = redis_client.get("name")
     # last_name = redis_client.get("last_name")
     # if not name: name = "no name"
@@ -58,10 +58,10 @@ def view_test_get_redis():
 
 
 ##############################
-@app.get("/")
-def view_index():
-    name = "X"
-    return render_template("view_index.html", name=name)
+# @app.get("/ccc")
+# def view_index():
+#     name = "X"
+#     return render_template("view_index.html", name=name)
 
 ##############################
 @app.get("/signup")
@@ -148,11 +148,13 @@ def view_choose_role():
 
 
 ##############################
-@app.route('/gallery')
+@app.route('/')
 def view_gallery():
+    user = session.get('user')
+
     images = os.listdir(x.UPLOAD_ITEM_FOLDER)
     images = [url_for('static', filename=f'uploads/{img}') for img in images]
-    return render_template('view_gallery.html', images=images)
+    return render_template('view_index.html', images=images, user=user)
 
 
 
@@ -258,7 +260,7 @@ def login():
         session["user"] = user
         if len(roles) == 1:
             return f"""<template mix-redirect="/{roles[0]}"></template>"""
-        return f"""<template mix-redirect="/choose-role"></template>"""
+        return f"""<template mix-redirect="/"></template>"""
     except Exception as ex:
         ic(ex)
         if "db" in locals(): db.rollback()
@@ -306,7 +308,7 @@ def upload():
     try:
         file, filename = x.validate_item_image()
         file.save(os.path.join(x.UPLOAD_ITEM_FOLDER, filename))
-        return redirect(url_for('view_gallery'))
+        return redirect(url_for('view_index'))
     except Exception as e:
         # Handle the custom exception
         return str(e), 400
