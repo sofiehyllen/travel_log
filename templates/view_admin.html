@@ -1,0 +1,13 @@
+{% include "_top_logged.html" %}
+
+Admin
+
+<h1>Upload a Photo</h1>
+<form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="item_file" required>
+    <button type="submit">Upload</button>
+</form>
+<a href="{{ url_for('view_gallery') }}">View Gallery</a>
+</body>
+
+</html>

@@ -41,9 +41,12 @@ def backup_database():
                 cursor.execute(f"SELECT * FROM {table_name};")
                 rows = cursor.fetchall()
                 for row in rows:
-                    placeholders = ', '.join(['%s'] * len(row))
-                    insert_stmt = f"INSERT INTO {table_name} VALUES ({placeholders});"
-                    f.write(insert_stmt % row + "\n")
+                    formatted_values = [
+                        f'"{value}"' if isinstance(value, (str, datetime.date)) else str(value) 
+                        for value in row
+                    ]
+                    insert_stmt = f"INSERT INTO {table_name} VALUES ({', '.join(formatted_values)});"
+                    f.write(insert_stmt + "\n")
                 
                 f.write("\n")
 

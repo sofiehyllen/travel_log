@@ -1,6 +1,19 @@
-from flask import request
+from flask import request, make_response
+from functools import wraps
 import mysql.connector
 import re
+import os
+import uuid
+
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from icecream import ic
+ic.configureOutput(prefix=f'***** | ', includeContext=True)
+
+
+
 
 # form to get data from input fields
 # args to get data from the url
@@ -27,6 +40,19 @@ def db():
     cursor = db.cursor(dictionary=True)
     return db, cursor
 
+
+##############################
+def no_cache(view):
+    @wraps(view)
+    def no_cache_view(*args, **kwargs):
+        response = make_response(view(*args, **kwargs))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+    return no_cache_view
+
+
 ##############################
 USER_NAME_MIN = 2
 USER_NAME_MAX = 20
@@ -48,21 +74,21 @@ def validate_user_last_name():
     return user_last_name
 
 ##############################
-EMAIL_REGEX = "^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"
+REGEX_EMAIL = "^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"
 def validate_user_email():
     error = "email invalid"
     user_email = request.form.get("user_email", "").strip()
-    if not re.match(EMAIL_REGEX, user_email): raise_custom_exception(error, 400)
+    if not re.match(REGEX_EMAIL, user_email): raise_custom_exception(error, 400)
     return user_email
 
 ##############################
 USER_PASSWORD_MIN = 8
 USER_PASSWORD_MAX = 50
-USER_PASSWORD_REGEX = f"^.{{{USER_PASSWORD_MIN},{USER_PASSWORD_MAX}}}$"
+REGEX_USER_PASSWORD = f"^.{{{USER_PASSWORD_MIN},{USER_PASSWORD_MAX}}}$"
 def validate_user_password():
     error = f"password {USER_PASSWORD_MIN} to {USER_PASSWORD_MAX} characters"
     user_password = request.form.get("user_password", "").strip()
-    if not re.match(USER_PASSWORD_REGEX, user_password): raise_custom_exception(error, 400)
+    if not re.match(REGEX_USER_PASSWORD, user_password): raise_custom_exception(error, 400)
     return user_password
 
 ##############################
@@ -74,120 +100,62 @@ def validate_uuid4(uuid4 = ""):
     if not re.match(REGEX_UUID4, uuid4): raise_custom_exception(error, 400)
     return uuid4
 
+##############################
+UPLOAD_ITEM_FOLDER = 'static/uploads/'
+ALLOWED_ITEM_FILE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
+def validate_item_image():
+    if 'item_file' not in request.files: raise_custom_exception("item_file missing", 400)
+    file = request.files.get("item_file", "")
+    if file.filename == "": raise_custom_exception("item_file name invalid", 400)
 
-
-"""
-from bottle import request, response, template
-import mysql.connector
-import re
-from icecream import ic
-
-ic.configureOutput(prefix=f'***** | ', includeContext=True)
+    if file:
+        ic(file.filename)
+        file_extension = os.path.splitext(file.filename)[1][1:]
+        ic(file_extension)
+        if file_extension not in ALLOWED_ITEM_FILE_EXTENSIONS: raise_custom_exception("item_file invalid extension", 400)
+        filename = str(uuid.uuid4()) + file_extension
+        return file, filename 
 
 
 ##############################
-def db():
-    db = mysql.connector.connect(
-        host="mysql",      # Replace with your MySQL server's address or docker service name "mysql"
-        user="root",  # Replace with your MySQL username
-        password="password",  # Replace with your MySQL password
-        database="company"   # Replace with your MySQL database name
-    )
-    cursor = db.cursor(dictionary=True)
-    return db, cursor
+def send_verify_email(to_email, user_verification_key):
+    try:
+        # Create a gmail fullflaskdemomail
+        # Enable (turn on) 2 step verification/factor in the google account manager
+        # Visit: https://myaccount.google.com/apppasswords
+        # Copy the key : pdru ctfd jdhk xxci
 
+        # Email and password of the sender's Gmail account
+        sender_email = "fullflaskdemomail@gmail.com"
+        password = "qtfumoyslvhoibrs"  # If 2FA is on, use an App Password instead
 
-##############################
-def disable_cache():
-    response.add_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-    response.add_header("Pragma", "no-cache")
-    response.add_header("Expires", 0)  
+        # Receiver email address
+        receiver_email = "fullflaskdemomail@gmail.com"
+        
+        # Create the email message
+        message = MIMEMultipart()
+        message["From"] = "My company name"
+        message["To"] = receiver_email
+        message["Subject"] = "Please verify your account"
 
-##############################
-UUID4_REGEX = "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[89abAB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$"
-def validate_user_pk(user_pk):
-    error = f"user id invalid"
-    user_pk = user_pk.strip()
-    if not re.match(UUID4_REGEX, user_pk): raise Exception(error, 400)
-    return user_pk
+        # Body of the email
+        body = f"""To verify your account, please <a href="http://127.0.0.1/verify/{user_verification_key}">click here</a>"""
+        message.attach(MIMEText(body, "html"))
 
-##############################
-EMAIL_REGEX = "^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"
-def validate_user_email():
-    error = "email invalid"
-    user_email = request.forms.get("user_email", "")
-    user_email = user_email.strip()
-    if not re.match(EMAIL_REGEX, user_email): raise Exception(error, 400)
-    return user_email
+        # Connect to Gmail's SMTP server and send the email
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()  # Upgrade the connection to secure
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        print("Email sent successfully!")
 
-
-##############################
-USER_PASSWORD_MIN = 8
-USER_PASSWORD_MAX = 50
-USER_PASSWORD_REGEX = f"^.{{{USER_PASSWORD_MIN},{USER_PASSWORD_MAX}}}$"
-def validate_user_password():
-    error = f"password {USER_PASSWORD_MIN} to {USER_PASSWORD_MAX} characters"
-    user_password = request.forms.get("user_password", "").strip()
-    if not re.match(USER_PASSWORD_REGEX, user_password): raise Exception(error, 400)
-    return user_password
-
-##############################
-USER_NAME_MIN = 2
-USER_NAME_MAX = 20
-USER_NAME_REGEX = f"^.{{{USER_NAME_MIN},{USER_NAME_MAX}}}$"
-def validate_user_name():
-    error = f"name {USER_NAME_MIN} to {USER_NAME_MAX} characters"
-    user_name = request.forms.get("user_name", "").strip()
-    if not re.match(USER_NAME_REGEX, user_name): raise Exception(error, 400)
-    return user_name
-
-
-##############################
-USER_LAST_NAME_MIN = 2
-USER_LAST_NAME_MAX = 20
-USER_LAST_NAME_REGEX = f"^.{{{USER_LAST_NAME_MIN},{USER_LAST_NAME_MAX}}}$"
-def validate_user_last_name():
-    error = f"last name {USER_LAST_NAME_MIN} to {USER_LAST_NAME_MAX} characters"
-    user_last_name = request.params.user_last_name.strip()
-    if not re.match(USER_LAST_NAME_REGEX, user_last_name): raise Exception(error, 400)
-    return user_last_name
-
-
-##############################
-USER_USERNAME_MIN = 2
-USER_USERNAME_MAX = 20
-USER_USERNAME_REGEX = f"^.{{{USER_USERNAME_MIN},{USER_USERNAME_MAX}}}$"
-def validate_user_username():
-    error = f"username {USER_USERNAME_MIN} to {USER_USERNAME_MAX} characters"
-    user_username = request.params.user_username.strip()
-    if not re.match(USER_USERNAME_REGEX, user_username): raise Exception(error, 400)
-    return user_username
-
-##############################
-REGEX_PAGE_NUMBER = f"^([1-9][0-9]*)$"
-def validate_page_number(page_number):
-    error = f"page_number invalid"
-    if not re.match(REGEX_PAGE_NUMBER, page_number): raise Exception(error, 400)
-    return int(page_number)
-
-##############################
-REGEX_KEY = f"^[1-9][0-9]*$"
-def validate_key(_key):
-    error = f"key invalid"
-    if not re.match(REGEX_KEY, _key): raise Exception(error, 400)
-    return _key
-
-"""
-
-
-
-
-
-
-
-
-
+        return "email sent"
+       
+    except Exception as ex:
+        raise_custom_exception("cannot send email", 500)
+    finally:
+        pass
 
 
 

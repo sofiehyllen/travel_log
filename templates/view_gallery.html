@@ -1,0 +1,15 @@
+{% include "_top_logged.html" %}
+
+
+<main>
+    <h1>Photo Gallery</h1>
+    <a href="{{ url_for('view_admin') }}">Upload More Photos</a>
+    <div>
+        {% for image in images %}
+        <img src="{{ image }}" alt="Uploaded Photo">
+        {% endfor %}
+    </div>
+</main>
+</body>
+
+</html>
